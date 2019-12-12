@@ -40,8 +40,7 @@ int main(int argc, char **argv)
 	serialTTY.c_cflag &= ~PARENB;
 	serialTTY.c_cflag &= ~CSTOPB;
 	serialTTY.c_cflag &= ~CRTSCTS;
-	serialTTY.c_cflag &= ~CREAD;
-	serialTTY.c_cflag &= ~CLOCAL;
+	serialTTY.c_cflag |= CLOCAL;
 
 	serialTTY.c_cflag &= ~(IXON | IXOFF | IXANY);
 	serialTTY.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL);
@@ -63,6 +62,19 @@ int main(int argc, char **argv)
 
 	char buffer[256];
 	memset(&buffer, 0, 256);
+	
+	int index = 0;
+	
+	while(TRUE)
+	{
+		int count = read(scannerSerialDevice, buffer+index, 256);
+		index += count;
+
+		if(buffer[index-1] == 3)
+		{
+			//TODO: ASD
+		}	
+	}
 
 	return 0;
 }
