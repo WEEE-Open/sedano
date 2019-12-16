@@ -20,6 +20,7 @@
 void errorHandler(int, int);
 void quit(int);
 int findStart(char *buf, int);
+char *retrieveData(char *buffer, int start, int end);
 
 int scannerSerialDevice;
 
@@ -69,13 +70,15 @@ int main(int argc, char **argv)
 
 	memset(&buffer, 0, BUFLEN);
 	
-	int index = 0;
+	int index = 1;
 	
 	while(TRUE)
 	{
 		int count = read(scannerSerialDevice, buffer+index, BUFLEN);
 		if(count >= 0)
+		{
 			index += count;
+		}
 		else 
 		{
 			errorHandler(errno, FALSE);
@@ -84,13 +87,9 @@ int main(int argc, char **argv)
 		
 		if(buffer[index-1] == 3)
 		{
-			int inizio = findStart(buffer, index-1);
-			printf("%d", inizio);
-			//sprintf(buffer, "%.*s", inizio, buffer+index-inizio);
-			printf("%s", buffer);
-					
-			memset(&buffer, 0, BUFLEN);
+			char *result = retrieveData(buffer, findStart(buffer, index-2), index-2);
 			index=0;
+			memset(&buffer, 0, BUFLEN);
 		}
 	}
 
@@ -101,7 +100,6 @@ void errorHandler(int error, int verbose)
 {
 	switch(error)
 	{
-
 		case EACCES:
 			printf("ERROR: Permission denied (did you run as root?).\n");
 			if(verbose)
@@ -130,7 +128,7 @@ int findStart(char *data, int end)
 	{
 		if(data[end-1-tmp] == 2)
 		{
-			return end-1-tmp;
+			return end-tmp;
 		}
 		else
 		{
@@ -139,4 +137,13 @@ int findStart(char *data, int end)
 	}
 
 	return -1;
+}
+
+char *retrieveData(char *buffer, int start, int end)
+{
+	char *result = calloc(end-start+2, sizeof(char));
+	memset(result, 0, end-start+2);
+
+	sprintf(result, "%.*s", end-start+1, buffer+start);
+	return result;
 }
