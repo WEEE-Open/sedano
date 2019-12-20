@@ -9,6 +9,7 @@
 
 #include <X11/Xlib.h>
 #include <X11/extensions/XTest.h>
+#include <X11/keysymdef.h>
 
 #define FAILED -1
 #define DEV_SERIAL_FILE "/dev/ttyS0"
@@ -20,6 +21,8 @@
 //stty -F /dev/ttyS0 19200 cs8 -cstopb -parenb -crtscts
 //stty -F /dev/ttyS0 19200 cs8 -cstopb -parenb -crtscts
 
+void keysend(char *string);
+void initializeXServer();
 void errorHandler(int, int);
 void quit(int);
 void debug();
@@ -29,8 +32,12 @@ char *retrieveData(char *buffer, int start, int end);
 int scannerSerialDevice;
 int delay = FALSE;
 
+Display *display;
+
 int main(int argc, char **argv)
 {
+	initializeXServer();
+
 	for(int i = 1; i < argc; i++)
 	{
 		if(!strcmp(argv[i], "--delay"))
@@ -107,6 +114,11 @@ int main(int argc, char **argv)
 		{
 			index += count;
 		}
+		else if(count == BUFLEN)
+		{
+			//complain abou buffer length being exceeded
+			quit(1);
+		}
 		else 
 		{
 			errorHandler(errno, FALSE);
@@ -178,31 +190,61 @@ char *retrieveData(char *buffer, int start, int end)
 
 void debug()
 {
-	char data[100];
+	char data[BUFLEN];
 	while(TRUE)
 	{
+		// Retrieve user input from STDIN.
 		scanf("%s", data);
 
-		Display *xorgDisplay = XOpenDisplay(NULL);
-		
-		int index = 0;
-		while(data[index] != 0)
+		keysend(data);
+	}	
+}
+
+void keysend(char *string)
+{
+	if(delay)
+	{
+		sleep(2);
+	}
+	
+	int index = 0;
+	while(string[index])
+	{
+		int shiftato = FALSE;
+
+		//asd
+		if (string[index] < 0x20)
 		{
-			char tmp[2] = {data[index], 0};
-			KeySym sym = XStringToKeysym(tmp);
-			KeyCode code = XKeysymToKeycode(xorgDisplay, sym);
-			
-			if(delay)
-			{
-				sleep(2);
-			}
-
-			XTestFakeKeyEvent(xorgDisplay, code, TRUE, 0);
-			XTestFakeKeyEvent(xorgDisplay, code, FALSE, 0);
-			
-			XFlush(xorgDisplay);
-
-			++index;
+			continue;
 		}
+		
+		if (string[index] > 0x40 && string[index] < 0x5B)
+		{
+			XTestFakeKeyEvent(display, XKeysymToKeycode(display, 0xFFE1), TRUE, 0);
+			shiftato = TRUE;
+		}
+		
+		XTestFakeKeyEvent(display, XKeysymToKeycode(display, (KeySym) string[index]), TRUE, 0);
+		XTestFakeKeyEvent(display, XKeysymToKeycode(display, (KeySym) string[index]), FALSE, 0);
+
+		if(shiftato)
+		{
+			XTestFakeKeyEvent(display, XKeysymToKeycode(display, 0xFFE1), FALSE, 0);
+		}
+		
+		XFlush(display);
+		++index;
+
+	}
+}
+
+void initializeXServer()
+{
+	display = XOpenDisplay(NULL);
+
+	if(!display)
+	{
+		//complain about the X server failing brutally
+		quit(1);
 	}
 }
