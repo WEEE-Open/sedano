@@ -7,6 +7,9 @@
 #include <termios.h>
 #include <string.h>
 
+#include <X11/Xlib.h>
+#include <X11/extensions/XTest.h>
+
 #define FAILED -1
 #define DEV_SERIAL_FILE "/dev/ttyS0"
 #define BUFLEN 100
@@ -19,13 +22,38 @@
 
 void errorHandler(int, int);
 void quit(int);
+void debug();
 int findStart(char *buf, int);
 char *retrieveData(char *buffer, int start, int end);
 
 int scannerSerialDevice;
+int delay = FALSE;
 
 int main(int argc, char **argv)
 {
+	for(int i = 1; i < argc; i++)
+	{
+		if(!strcmp(argv[i], "--delay"))
+		{
+			delay = TRUE;
+		}
+	}
+
+	for(int i = 1; i < argc; i++)
+	{
+		if(!strcmp(argv[i], "--debug"))
+		{
+			printf("ACTIVATING DEBUG MODE: Disable COM port configuration - Input is accepted from STDIN.\n");
+			if(delay)
+			{
+				printf("DELAY ACTIVATED!\n");
+			}
+			
+			printf("\n");
+			debug();
+		}
+	}
+
 	char buffer[BUFLEN];
 	
 	scannerSerialDevice = open(DEV_SERIAL_FILE, O_RDONLY | O_NONBLOCK);
@@ -103,15 +131,15 @@ void errorHandler(int error, int verbose)
 		case EACCES:
 			printf("ERROR: Permission denied (did you run as root?).\n");
 			if(verbose)
-				printf("[ERRNO MESSAGE]: %s.", strerror(error));
+				printf("[ERRNO MESSAGE]: %s.\n", strerror(error));
 			break;
 		case ENOENT:
 			printf("ERROR: File not found. (did you use setserial to find the correct name?).");
 			if(verbose)
-				printf("[ERRNO MESSAGE]: %s.", strerror(error));
+				printf("[ERRNO MESSAGE]: %s.\n", strerror(error));
 			break;
 		default:
-			printf("I/O Error while completing operation.\n[ERRNO MESSGE]:  %s.", strerror(errno));
+			printf("I/O Error while completing operation.\n[ERRNO MESSGE]:  %s.\n", strerror(errno));
 	}
 }
 
@@ -146,4 +174,35 @@ char *retrieveData(char *buffer, int start, int end)
 
 	sprintf(result, "%.*s", end-start+1, buffer+start);
 	return result;
+}
+
+void debug()
+{
+	char data[100];
+	while(TRUE)
+	{
+		scanf("%s", data);
+
+		Display *xorgDisplay = XOpenDisplay(NULL);
+		
+		int index = 0;
+		while(data[index] != 0)
+		{
+			char tmp[2] = {data[index], 0};
+			KeySym sym = XStringToKeysym(tmp);
+			KeyCode code = XKeysymToKeycode(xorgDisplay, sym);
+			
+			if(delay)
+			{
+				sleep(2);
+			}
+
+			XTestFakeKeyEvent(xorgDisplay, code, TRUE, 0);
+			XTestFakeKeyEvent(xorgDisplay, code, FALSE, 0);
+			
+			XFlush(xorgDisplay);
+
+			++index;
+		}
+	}
 }
