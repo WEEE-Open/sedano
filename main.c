@@ -6,10 +6,12 @@
 #include <errno.h>
 #include <termios.h>
 #include <string.h>
+#include <ctype.h>
 
 #include <X11/Xlib.h>
 #include <X11/extensions/XTest.h>
 #include <X11/keysymdef.h>
+#include <X11/keysym.h>
 
 #define FAILED -1
 #define DEV_SERIAL_FILE "/dev/ttyS0"
@@ -22,46 +24,58 @@
 //stty -F /dev/ttyS0 19200 cs8 -cstopb -parenb -crtscts
 
 void keysend(char *string);
-void initializeXServer();
 void errorHandler(int, int);
 void quit(int);
-void debug();
+void debugLoop();
 int findStart(char *buf, int);
 char *retrieveData(char *buffer, int start, int end);
 
 int scannerSerialDevice;
-int delay = FALSE;
 
 Display *display;
 
+int isNumber(char *);
+
+int delay = FALSE;
+int debug = FALSE;
+
+char buffer[BUFLEN];
+
 int main(int argc, char **argv)
 {
-	initializeXServer();
+	// We need to open the display before we can send any keypress event.
+	display = XOpenDisplay(NULL);
 
-	for(int i = 1; i < argc; i++)
+	if(!display)
 	{
-		if(!strcmp(argv[i], "--delay"))
-		{
-			delay = TRUE;
-		}
+		//complain about the X server failing brutally
+		quit(1);
 	}
 
 	for(int i = 1; i < argc; i++)
 	{
 		if(!strcmp(argv[i], "--debug"))
 		{
-			printf("ACTIVATING DEBUG MODE: Disable COM port configuration - Input is accepted from STDIN.\n");
-			if(delay)
+			debug = TRUE;
+		}
+		else if(!strcmp(argv[i], "--delay"))
+		{
+			if((i+1) < argc && isNumber(argv[i+1]))
 			{
-				printf("DELAY ACTIVATED!\n");
+				delay = atoi(argv[i+1]);
 			}
-			
-			printf("\n");
-			debug();
+			else
+			{
+				//Complain
+				quit(1);
+			}
 		}
 	}
 
-	char buffer[BUFLEN];
+	if(debug)
+	{
+		debugLoop();
+	}
 	
 	scannerSerialDevice = open(DEV_SERIAL_FILE, O_RDONLY | O_NONBLOCK);
 
@@ -146,12 +160,14 @@ void errorHandler(int error, int verbose)
 				printf("[ERRNO MESSAGE]: %s.\n", strerror(error));
 			break;
 		case ENOENT:
-			printf("ERROR: File not found. (did you use setserial to find the correct name?).");
+			printf("ERROR: Device file not found.\n");
 			if(verbose)
 				printf("[ERRNO MESSAGE]: %s.\n", strerror(error));
 			break;
 		default:
-			printf("I/O Error while completing operation.\n[ERRNO MESSGE]:  %s.\n", strerror(errno));
+			printf("ERROR: A general error occurred.\n");
+			if(verbose)
+				printf("[ERRNO MESSGE]:  %s.\n", strerror(error));
 	}
 }
 
@@ -188,63 +204,51 @@ char *retrieveData(char *buffer, int start, int end)
 	return result;
 }
 
-void debug()
+void debugLoop()
 {
-	char data[BUFLEN];
 	while(TRUE)
 	{
-		// Retrieve user input from STDIN.
-		scanf("%s", data);
 
-		keysend(data);
+		scanf("%s", buffer);
+		keysend(buffer);
 	}	
 }
 
 void keysend(char *string)
 {
-	if(delay)
-	{
-		sleep(2);
-	}
+	sleep(delay);
 	
-	int index = 0;
-	while(string[index])
-	{
-		int shiftato = FALSE;
-
-		//asd
-		if (string[index] < 0x20)
-		{
-			continue;
-		}
-		
-		if (string[index] > 0x40 && string[index] < 0x5B)
+	for(int i = 0; i < strlen(string); ++i)
+	{		
+		if(isupper(string[i]) || string[i] == '(' || string[i] == ')')
 		{
 			XTestFakeKeyEvent(display, XKeysymToKeycode(display, 0xFFE1), TRUE, 0);
-			shiftato = TRUE;
-		}
-		
-		XTestFakeKeyEvent(display, XKeysymToKeycode(display, (KeySym) string[index]), TRUE, 0);
-		XTestFakeKeyEvent(display, XKeysymToKeycode(display, (KeySym) string[index]), FALSE, 0);
 
-		if(shiftato)
-		{
+			XTestFakeKeyEvent(display, XKeysymToKeycode(display, (KeySym) string[i]), TRUE, 0);
+			XTestFakeKeyEvent(display, XKeysymToKeycode(display, (KeySym) string[i]), FALSE, 0);
+
 			XTestFakeKeyEvent(display, XKeysymToKeycode(display, 0xFFE1), FALSE, 0);
+		}
+		else if(islower(string[i]) || isdigit(string[i]) || string[i] == '-' || string[i] == '.')
+		{
+
+			XTestFakeKeyEvent(display, XKeysymToKeycode(display, (KeySym) string[i]), TRUE, 0);
+			XTestFakeKeyEvent(display, XKeysymToKeycode(display, (KeySym) string[i]), FALSE, 0);
 		}
 		
 		XFlush(display);
-		++index;
-
 	}
 }
 
-void initializeXServer()
+int isNumber(char *string)
 {
-	display = XOpenDisplay(NULL);
-
-	if(!display)
+	for(int i = 0; i < strlen(string); i++)
 	{
-		//complain about the X server failing brutally
-		quit(1);
+		if(!isdigit(string[i]))
+		{
+			return FALSE;
+		}
 	}
+
+	return TRUE;
 }
