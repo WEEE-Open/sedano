@@ -107,8 +107,8 @@ int errorHandler(Display *display, XErrorEvent *error)
 // Close the display. 
 void X11Terminate()
 {
-    LOG(LOG_INFO, "Closing X11 display...");
     XCloseDisplay(X11Display);
+    LOG(LOG_INFO, "Closed X11 display.");
 
     return;
 }

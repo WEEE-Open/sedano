@@ -4,11 +4,11 @@
 #include "common.h"
 
 int deviceFD = FAILED;      // UNIX file descriptor for scanner.
-FILE *device = NULL;        // STDLIB file for scanner.
+FILE *deviceFS = NULL;        // STDLIB file for scanner.
 struct termios deviceTTY;   // Serial device for scanner.
 
 int initializedFD = FALSE;
-int initializedFL = FALSE;
+int initializedFS = FALSE;
 
 int serialTerminate();
 
@@ -17,19 +17,23 @@ int serialInitialize(char *path)
 {
     if((deviceFD = open(path, O_RDONLY | O_NONBLOCK)) == FAILED)
         return serialTerminate();
-    
+
+    LOG(LOG_INFO, "Opened file descriptor for %s (readonly, non-blocking).", path);
     initializedFD = TRUE;
 
-    if((device = fdopen(deviceFD, "r")) == NULL)
+    if((deviceFS = fdopen(deviceFD, "r")) == NULL)
         return serialTerminate();
 
-    initializedFL = TRUE;
+    LOG(LOG_INFO, "Opened file stream.");
+    initializedFS = TRUE;
 
     memset(&deviceTTY, 0, sizeof deviceTTY);
 
     // Get serial device configuration.
     if(tcgetattr(deviceFD, &deviceTTY) == FAILED)
         return serialTerminate();
+
+    LOG(LOG_INFO, "Serial parameters read successfully.");
 
     // Configure connection parameters.
     deviceTTY.c_cflag &= ~(PARENB|CSTOPB|CRTSCTS|IXON|IXOFF|IXANY);
@@ -46,11 +50,14 @@ int serialInitialize(char *path)
     if(tcsetattr(deviceFD, TCSANOW, &deviceTTY) == FAILED)
         return serialTerminate();
 
+    LOG(LOG_INFO, "Serial parameters set successfully.");
+
     return OK;
 }
 
 // Barcodes are sent as ASCII strings by the scanner.
 // Strings are delimited by 0x2 at the start and 0x3 at the end.
+// WARNING: Resulting barcode must be free'd after use.
 char * readBarcode()
 {
     char *barcode = malloc(sizeof(char));
@@ -69,13 +76,14 @@ char * readBarcode()
     // Wait for the start of a new string to come.
     do
     {
-        nextChar = fgetc(device);
+        nextChar = fgetc(deviceFS);
     }
     while(nextChar != 0x02);
 
+    LOG(LOG_DEBUG, "Waiting for the start of a barcode...");
     while(TRUE)
     {
-        nextChar = fgetc(device);
+        nextChar = fgetc(deviceFS);
 
         if(nextChar == EOF)
             continue;
@@ -104,6 +112,7 @@ char * readBarcode()
         }
     }
 
+    LOG(LOG_DEBUG, "Barcode read successfully: %s", barcode);
     return barcode;
 }
 
@@ -112,10 +121,11 @@ int serialTerminate()
     int e = errno;
 
     // Logical operators are short-circuited: the close operations only complete if the corresponding boolean is true.
-    if(initializedFL && fclose(device) == EOF)
+    if(initializedFS && fclose(deviceFS) == EOF)
         return errno;
     if(initializedFD && close(deviceFD) == FAILED)
         return errno;
 
+     LOG(LOG_INFO, "Closed serial device file stream and descriptor.");
     return e;
 }
