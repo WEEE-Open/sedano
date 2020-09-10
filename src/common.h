@@ -16,7 +16,8 @@
 #define FALSE 0
 
 #ifdef DEBUG
-    #define LOG(x,y) logEvent(x, y)
+    //#define LOG(file, line, function, severity, format, ...) logEvent(file, line, function, severity, format, ##__VA_ARGS__)
+    #define LOG(severity, format, ...) logEvent(__FILE__, __LINE__, __func__, severity, format, ##__VA_ARGS__)
 #else
-    #define LOG(x,y)
+    #define LOG(severity, format, ...)
 #endif

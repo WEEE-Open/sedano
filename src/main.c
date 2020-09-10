@@ -8,7 +8,7 @@ int main(int argc, char **argv)
 
     if(X11Initialize() == FAILED)
     {
-        fprintf(stderr, "ERROR: Failed to initialize X11.");
+        LOG(LOG_FATAL, "ERROR: Failed to initialize X11.");
         exit(1);
     }
 
@@ -17,9 +17,9 @@ int main(int argc, char **argv)
         char string[1000];
         scanf("%s", string);
 
-        if(typeString(string) == FAILED)
+        if(typeString(string, 2) == FAILED)
         {
-            fprintf(stderr, "ERROR: Failed to print the string.");
+            LOG(LOG_FATAL, "ERROR: Failed to print the string.");
             exit(1);
         }
     }

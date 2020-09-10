@@ -5,6 +5,7 @@
 Display *X11Display;
 Window rootWindow;
 
+int errorHandler(Display *, XErrorEvent *);
 int sendKeyEvent(int press, char letter, Window window);
 
 // Get the display for the system.
@@ -12,22 +13,26 @@ int sendKeyEvent(int press, char letter, Window window);
 int X11Initialize()
 {
     X11Display = XOpenDisplay(NULL);
+    LOG(LOG_INFO, "Initialized X11 display.");
 
     if(X11Display == NULL)
         return FAILED;
 
     rootWindow = DefaultRootWindow(X11Display);
+    LOG(LOG_INFO, "Hooked to default root window for the display.");
+
+    // We are not interested in the previous handler so we ignore return value.
+    XSetErrorHandler(errorHandler);
+    LOG(LOG_INFO, "Hooked to X11 error handler.");
     
     return OK;
 }
 
 // Type the string in the currently focused window.
-int typeString(char *string)
+int typeString(char *string, int delaySeconds)
 {
     //TODO: This is horrible
-    char message[strlen(string) + 55 + 1];
-    snprintf(message, strlen(string) + 56, "Typing the string \"%s\" into the currently focused window.", string);
-    LOG(LOG_DEBUG, message);
+    LOG(LOG_DEBUG, "Typing the string \"%s\" of length %d into the currently focused window.", string, strlen(string));
 
     Window currentWindow;
     int revert;
@@ -40,16 +45,27 @@ int typeString(char *string)
         // ASCII characters from 0x20 to 0xFF directly map to the corresponding KeySym.
         // ASCII characters below 0x20 are just control characters and should never appear (can be ignored).
         if(string[i] < 0x20 || string[i] > 0x7E)
+        {
+            LOG(LOG_WARNING, "Ignoring invalid ascii character");
             continue;
-        
+        }
+
+        LOG(LOG_DEBUG, "Sending keycode 0x%02X corresponding to letter \'%c\'...", XKeysymToKeycode(X11Display, (KeySym) string[i]), string[i]);
+
         if(sendKeyEvent(TRUE, string[i], currentWindow) == FAILED)
             return FAILED;
 
+        LOG(LOG_DEBUG, "    Sent KeyPress event");
+
         if(sendKeyEvent(FALSE, string[i], currentWindow) == FAILED)
             return FAILED;
-        
-        return OK;
+
+        LOG(LOG_DEBUG, "    Sent KeyRelease event");
+
+        XFlush(X11Display);
     }
+        
+    return OK;
 }
 
 // Send a XKeyEvent to the specified window with the keycode of the corresponding ASCII letter.
@@ -77,9 +93,22 @@ int sendKeyEvent(int press, char letter, Window window)
         return OK;
 }
 
-// Close the display.
+// Handles errors reported by X11.
+// Errors can be non-fatal so the function can return but it must not generate
+// (in)directly protocol requests on the display that caused the error.
+int errorHandler(Display *display, XErrorEvent *error)
+{
+    LOG(LOG_ERROR, "Exception rised by X11 server!");
+
+    // Return value is ignored.
+    return OK;
+}
+
+// Close the display. 
 void X11Terminate()
 {
+    LOG(LOG_INFO, "Closing X11 display...");
     XCloseDisplay(X11Display);
+
     return;
 }
