@@ -24,6 +24,11 @@ int X11Initialize()
 // Type the string in the currently focused window.
 int typeString(char *string)
 {
+    //TODO: This is horrible
+    char message[strlen(string) + 55 + 1];
+    snprintf(message, strlen(string) + 56, "Typing the string \"%s\" into the currently focused window.", string);
+    LOG(LOG_DEBUG, message);
+
     Window currentWindow;
     int revert;
 

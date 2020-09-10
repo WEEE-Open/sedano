@@ -4,6 +4,8 @@
 
 int main(int argc, char **argv)
 {
+    LOG(LOG_INFO, "Sedano started...");
+
     if(X11Initialize() == FAILED)
     {
         fprintf(stderr, "ERROR: Failed to initialize X11.");
@@ -14,9 +16,6 @@ int main(int argc, char **argv)
     {
         char string[1000];
         scanf("%s", string);
-
-        printf("\n\n>>>");
-        sleep(1);
 
         if(typeString(string) == FAILED)
         {

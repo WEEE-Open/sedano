@@ -12,7 +12,7 @@ DBGOBJS := $(patsubst $(SRC_DIR)/%.c, $(DBG_DIR)/%.o, $(SOURCES))
 # Compilation options
 COMPILER := gcc
 LINK_OPTIONS := -lX11
-ASSEMBLER_OPTIONS_DBG := -ggdb
+ASSEMBLER_OPTIONS_DBG := -ggdb -DDEBUG
 
 all: directories release debug
 
