@@ -18,7 +18,22 @@
 #define RESET       "\x1B[0m"
 
 int countFormatIdentifiers(char *);
-int autoFormat(char **, char *, ...);
+char * autoFormat(char *, ...);
+
+/*
+ *  This class itself contains a few points where logs are genereated. Under some circumstances, this chould
+ *  result in an infinite recursion. The logic behind this choice is that the logging facilities themselves are
+ *  trusted (by extensive testing) to be reliable and not generate any errors by themselselves. By taking this
+ *  assumption to be true, any error logs generated within this file can only be caused by code in other regions
+ *  of the program that misbehaved. Therefore, unless the offending instruction itself is infinitely repeated,
+ *  no recursion should happen whatsoever.
+ * 
+ *  NOTE: There can be situations where the logging facilities themselves could generate errors, for example
+ *        memory allocation if the system is out of usable memory. There however are extreme conditions that
+ *        should not happen in a normal execution (and this code is never called in release anyways).
+ * 
+ *  TODO: Actually implement extensive tests.
+ */
 
 int logEvent(const char *fileName, const int lineNumber, const char* function, int severity, char *format, ...)
 {
@@ -49,9 +64,12 @@ int logEvent(const char *fileName, const int lineNumber, const char* function, i
             type = "INFO";
     }
 
-    char * prologue = NULL;
-    if(autoFormat(&prologue, "[%s]: %s:%d (%s): ", type, fileName, lineNumber, function) < 0)
+    char *prologue = NULL;
+    if((prologue = autoFormat("[%s]: %s:%d (%s): ", type, fileName, lineNumber, function)) == NULL)
+    {
+        LOG(LOG_ERROR, "Failed to construct log prologue message.");
         return FAILED;
+    }
 
     // Print the intestation and message.
     // Passing VAs by reference so we can use NULL as a signal.
@@ -102,9 +120,12 @@ int countFormatIdentifiers(char *format)
 
             // Malformed string: a % must be followed by at least one char.
             if(i >= strlen(format))
+            {
+                LOG(LOG_ERROR, "Invalid format string provided: \"%s\"", format);
                 return FAILED;
+            }
             
-            // Our character is a placeholder and not a literal %.
+            // Check that we're not dealing with a literal %.
             if(i != '%')
                 argc++;
         }
@@ -115,30 +136,36 @@ int countFormatIdentifiers(char *format)
 
 // Automatically allocate the right amount of space to store a formatted string and return the pointer.
 // WARNING: When using this function the resulting string must be free'd after use.
-int autoFormat(char **string, char* format, ...)
+char * autoFormat(char* format, ...)
 {
     va_list args;
+    int stringLength;
+
     va_start(args, countFormatIdentifiers(format));
 
     // Use vsnprintf to write 0 characters to NULL.
     // It has no effect but returns us the strlen of the formatted string
-    int stringLength = vsnprintf(NULL, 0, format, args);
-    if(stringLength < 0)
-        return FAILED;
+    if((stringLength = vsnprintf(NULL, 0, format, args)) < 0)
+    {
+        LOG(LOG_ERROR, "Failed to determine formatted string length.");
+        return NULL;
+    }
 
     // Need to re-start the VA list to use it again.
     va_end(args);
     va_start(args, countFormatIdentifiers(format));
 
-    *string = malloc((stringLength + 1) * sizeof(char));
-    
-    int result = vsnprintf(*string, (stringLength + 1), format, args);
+    char *string = malloc((stringLength + 1) * sizeof(char));
+    int result = vsnprintf(string, (stringLength + 1), format, args);
 
     va_end(args);
 
     if(result < 0)
-        return FAILED;
+    {
+        return NULL;
+        LOG(LOG_ERROR, "Failed to format string.");
+    }
     else
-        return OK;
+        return string;
 
 }
