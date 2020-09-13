@@ -19,38 +19,38 @@ int serialInitializationComplete = FALSE;
 // TODO: Dirty and completed booleans
 int serialInitialize(char *path)
 {
-    LOG(LOG_DEBUG, "Initializing serial connection...");
+    LOG(LOG_INFO, "Initializing serial connection...");
 
     // If the initialization has already been completed, do nothing
     if(serialInitializationComplete)
     {
-        LOG(LOG_DEBUG, "Skipping initialization: already complete.");
-        LOG(LOG_DEBUG, "If you want to reinitialize serial, close the current connection first.");
+        LOG(LOG_DEBUG, "    Skipping initialization: already complete.");
+        LOG(LOG_DEBUG, "    If you want to reinitialize serial, terminate it first.");
         return OK;
     }
+
+    if(serialInitializationDirty)
+        LOG(LOG_WARNING, "    Previous serial initialization attempt did not complete successfully.");
 
     // We clear this value when we complete initialization. This way we know if a previous attempt failed.
     serialInitializationDirty = TRUE;
 
-    if(serialInitializationDirty)
-        LOG(LOG_WARNING, "Previous serial initialization attempt did not complete successfully.");
-
     if((deviceFD = open(path, O_RDONLY | O_NONBLOCK)) == FAILED)
     {
-        LOG(LOG_ERROR, "Failed to open file descriptor for device %s.", path);
+        LOG(LOG_ERROR, "    Failed to open file descriptor for device %s.", path);
         return serialTerminate();
     }
 
-    LOG(LOG_INFO, "File descriptor for device %s (readonly, non-blocking) opened successfully.", path);
+    LOG(LOG_DEBUG, "    File descriptor for device %s (readonly, non-blocking) opened successfully.", path);
     initializedFD = TRUE;
 
     if((deviceFS = fdopen(deviceFD, "r")) == NULL)
     {
-        LOG(LOG_ERROR, "Failed to open file stream for device %s.", path);
+        LOG(LOG_ERROR, "    Failed to open file stream for device %s.", path);
         return serialTerminate();
     }
 
-    LOG(LOG_INFO, "File stream for device %s opened successfully.", path);
+    LOG(LOG_DEBUG, "    File stream for device %s opened successfully.", path);
     initializedFS = TRUE;
 
     memset(&deviceTTY, 0, sizeof deviceTTY);
@@ -58,11 +58,11 @@ int serialInitialize(char *path)
     // Get serial device configuration.
     if(tcgetattr(deviceFD, &deviceTTY) == FAILED)
     {
-        LOG(LOG_ERROR, "Failed to read serial parameters.");
+        LOG(LOG_ERROR, "    Failed to read serial parameters.");
         return serialTerminate();
     }
 
-    LOG(LOG_INFO, "Serial parameters read successfully.");
+    LOG(LOG_DEBUG, "    Serial parameters read successfully.");
 
     // Configure connection parameters.
     deviceTTY.c_cflag &= ~(PARENB|CSTOPB|CRTSCTS|IXON|IXOFF|IXANY);
@@ -78,14 +78,16 @@ int serialInitialize(char *path)
 
     if(tcsetattr(deviceFD, TCSANOW, &deviceTTY) == FAILED)
     {
-        LOG(LOG_ERROR, "Failed to set serial parameters.");
+        LOG(LOG_ERROR, "    Failed to set serial parameters.");
         return serialTerminate();
     }
 
-    LOG(LOG_INFO, "Serial parameters set successfully.");
+    LOG(LOG_DEBUG, "    Serial parameters set successfully.");
 
     serialInitializationDirty = FALSE;
     serialInitializationComplete = TRUE;
+
+    LOG(LOG_INFO, "Serial connection initialized!");
     return OK;
 }
 
@@ -94,6 +96,8 @@ int serialInitialize(char *path)
 // WARNING: Resulting barcode must be free'd after use.
 char * readBarcode()
 {
+    LOG(LOG_INFO, "Preparing to read a barcode...");
+
     char *barcode = malloc(sizeof(char));
     char nextChar;
 
@@ -104,7 +108,7 @@ char * readBarcode()
     {
         serialTerminate();
         free(barcode);
-        LOG(LOG_ERROR, "Failed to allocate memory for the barcode.");
+        LOG(LOG_ERROR, "    Failed to allocate memory for the barcode.");
         return NULL;
     }
 
@@ -115,7 +119,7 @@ char * readBarcode()
     }
     while(nextChar != 0x02);
 
-    LOG(LOG_DEBUG, "Waiting for a barcode...");
+    LOG(LOG_DEBUG, "    Waiting for a barcode...");
     while(TRUE)
     {
         nextChar = fgetc(deviceFS);
@@ -130,7 +134,7 @@ char * readBarcode()
         {
             serialTerminate();
             free(barcode);
-        LOG(LOG_ERROR, "Failed to expand memory for the barcode.");
+        LOG(LOG_ERROR, "    Failed to expand memory for the barcode.");
             return NULL;
         }
 
@@ -154,7 +158,7 @@ char * readBarcode()
 
 int serialTerminate()
 {
-    LOG(LOG_DEBUG, "Terminating serial connection...");
+    LOG(LOG_INFO, "Terminating serial connection...");
 
     int e = errno;
 
@@ -162,17 +166,18 @@ int serialTerminate()
     if(initializedFS && fclose(deviceFS) == EOF)
     {
         serialInitializationDirty = TRUE;
-        LOG(LOG_ERROR, "Failed to close device file stream.");
+        LOG(LOG_ERROR, "    Failed to close device file stream.");
         return errno;
     }
     if(initializedFD && close(deviceFD) == FAILED)
     {
         serialInitializationDirty = TRUE;
-        LOG(LOG_ERROR, "Failed to close device file descriptor.");
+        LOG(LOG_ERROR, "    Failed to close device file descriptor.");
         return errno;
     }
 
-     LOG(LOG_INFO, "Closed serial device file stream and descriptor.");
+     LOG(LOG_DEBUG, "    Closed serial device file stream and descriptor.");
+     LOG(LOG_INFO, "Serial connection terminated!");
 
     serialInitializationDirty = FALSE;
     serialInitializationComplete = FALSE;

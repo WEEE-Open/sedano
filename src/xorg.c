@@ -7,24 +7,52 @@ Window rootWindow;
 
 int errorHandler(Display *, XErrorEvent *);
 int sendKeyEvent(int press, char letter, Window window);
+int X11Terminate();
+
+int X11InitializationComplete = FALSE;
+int X11InitializationDirty = FALSE;
 
 // Get the display for the system.
 // TODO: Validate this code against multi-monitor setups.
 int X11Initialize()
 {
+    LOG(LOG_INFO, "Initializing X11 interface...");
+
+    // If the initialization has already been completed, do nothing
+    if(X11InitializationComplete)
+    {
+        LOG(LOG_DEBUG, "    Skipping initialization: already complete.");
+        LOG(LOG_DEBUG, "    If you want to reinitialize X11, terminate it first.");
+        return OK;
+    }
+
+    if(X11InitializationDirty)
+        LOG(LOG_WARNING, "    Previous X11 initialization attempt did not complete successfully.");
+
+    // We clear this value when we complete initialization. This way we know if a previous attempt failed.
+    X11InitializationDirty = TRUE;
+
     X11Display = XOpenDisplay(NULL);
-    LOG(LOG_INFO, "Initialized X11 display.");
 
     if(X11Display == NULL)
-        return FAILED;
+    {
+        LOG(LOG_ERROR, "    Failed to open display!");
+        X11InitializationDirty = TRUE;
+        return X11Terminate();
+    }
+
+    LOG(LOG_DEBUG, "    Display opened successfully.");
 
     rootWindow = DefaultRootWindow(X11Display);
-    LOG(LOG_INFO, "Hooked to default root window for the display.");
+    LOG(LOG_DEBUG, "    Hooked to default root window for the display.");
 
     // We are not interested in the previous handler so we ignore return value.
     XSetErrorHandler(errorHandler);
-    LOG(LOG_INFO, "Hooked to X11 error handler.");
+    LOG(LOG_DEBUG, "    Hooked to X11 error handler.");
     
+    LOG(LOG_INFO, "X11 interface initialized!");
+
+    X11InitializationDirty = FALSE;
     return OK;
 }
 
@@ -46,21 +74,21 @@ int typeString(char *string, int delaySeconds)
         // ASCII characters below 0x20 are just control characters and should never appear (can be ignored).
         if(string[i] < 0x20 || string[i] > 0x7E)
         {
-            LOG(LOG_WARNING, "Ignoring invalid ascii character");
+            LOG(LOG_WARNING, "Ignoring invalid ascii character in input string.");
             continue;
         }
 
-        LOG(LOG_DEBUG, "Sending keycode 0x%02X corresponding to letter \'%c\'...", XKeysymToKeycode(X11Display, (KeySym) string[i]), string[i]);
+        LOG(LOG_DEBUG, "    Sending keycode 0x%02X corresponding to letter \'%c\'...", XKeysymToKeycode(X11Display, (KeySym) string[i]), string[i]);
 
         if(sendKeyEvent(TRUE, string[i], currentWindow) == FAILED)
             return FAILED;
 
-        LOG(LOG_DEBUG, "    Sent KeyPress event");
+        LOG(LOG_DEBUG, "        Sent KeyPress event");
 
         if(sendKeyEvent(FALSE, string[i], currentWindow) == FAILED)
             return FAILED;
 
-        LOG(LOG_DEBUG, "    Sent KeyRelease event");
+        LOG(LOG_DEBUG, "        Sent KeyRelease event");
 
         XFlush(X11Display);
     }
@@ -98,17 +126,21 @@ int sendKeyEvent(int press, char letter, Window window)
 // (in)directly protocol requests on the display that caused the error.
 int errorHandler(Display *display, XErrorEvent *error)
 {
-    LOG(LOG_ERROR, "Exception rised by X11 server!");
+    LOG(LOG_ERROR, "Exception raised by X11 server!");
 
     // Return value is ignored.
     return OK;
 }
 
 // Close the display. 
-void X11Terminate()
+int X11Terminate()
 {
+    LOG(LOG_INFO, "Terminating X11 interface...");
     XCloseDisplay(X11Display);
-    LOG(LOG_INFO, "Closed X11 display.");
+    LOG(LOG_INFO, "Terminated X11 interface!");
 
-    return;
+    X11InitializationDirty = FALSE;
+    X11InitializationComplete = FALSE;
+
+    return OK;
 }

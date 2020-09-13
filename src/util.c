@@ -17,8 +17,7 @@
 // Reset formatting
 #define RESET       "\x1B[0m"
 
-int countFormatIdentifiers(char *);
-char * autoFormat(char *, ...);
+char * autoFormat(char *, int, ...);
 
 /*
  *  This class itself contains a few points where logs are genereated. Under some circumstances, this chould
@@ -35,7 +34,7 @@ char * autoFormat(char *, ...);
  *  TODO: Actually implement extensive tests.
  */
 
-int logEvent(const char *fileName, const int lineNumber, const char* function, int severity, char *format, ...)
+int logEvent(const char *fileName, const int lineNumber, const char* function, int severity, char *format, int count, ...)
 {
     char *color = NULL;
     char *type = NULL;
@@ -44,28 +43,30 @@ int logEvent(const char *fileName, const int lineNumber, const char* function, i
     {
         case LOG_DEBUG:
             color = WHITE;
-            type = "DEBUG";
+            type = "DBG";
             break;
         case LOG_WARNING:
             color = YELLOW;
-            type = "WARN";
+            type = "WRN";
             break;
         case LOG_ERROR:
             color = RED;
-            type = "ERROR";
+            type = "ERR";
             break;
         case LOG_FATAL:
             color = MAGENTA;
-            type = "FATAL";
+            type = "FAT";
             break;
         case LOG_INFO:
         default:
             color = CYAN;
-            type = "INFO";
+            type = "INF";
     }
 
     char *prologue = NULL;
-    if((prologue = autoFormat("[%s]: %s:%d (%s): ", type, fileName, lineNumber, function)) == NULL)
+    char *prologueFormat = "[%s]: %s:%d (%s): ";
+
+    if((prologue = autoFormat(prologueFormat, countFormatIdentifiers(prologueFormat), type, fileName, lineNumber, function)) == NULL)
     {
         LOG(LOG_ERROR, "Failed to construct log prologue message.");
         return FAILED;
@@ -76,7 +77,7 @@ int logEvent(const char *fileName, const int lineNumber, const char* function, i
     prettyPrint(TRUE, FALSE, color, prologue, NULL, stdout);
     
     va_list args;
-    va_start(args, countFormatIdentifiers(format));
+    va_start(args, count);
 
     prettyPrint(FALSE, TRUE, color, format, &args, stdout);
 
@@ -136,12 +137,12 @@ int countFormatIdentifiers(char *format)
 
 // Automatically allocate the right amount of space to store a formatted string and return the pointer.
 // WARNING: When using this function the resulting string must be free'd after use.
-char * autoFormat(char* format, ...)
+char * autoFormat(char* format, int count, ...)
 {
     va_list args;
     int stringLength;
 
-    va_start(args, countFormatIdentifiers(format));
+    va_start(args, count);
 
     // Use vsnprintf to write 0 characters to NULL.
     // It has no effect but returns us the strlen of the formatted string
@@ -153,7 +154,7 @@ char * autoFormat(char* format, ...)
 
     // Need to re-start the VA list to use it again.
     va_end(args);
-    va_start(args, countFormatIdentifiers(format));
+    va_start(args, count);
 
     char *string = malloc((stringLength + 1) * sizeof(char));
     int result = vsnprintf(string, (stringLength + 1), format, args);

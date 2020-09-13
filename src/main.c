@@ -16,6 +16,9 @@ int main(int argc, char **argv)
     signal(SIGTERM, handleSIGTERM);
     signal(SIGINT, handleSIGINT);
 
+    //TODO: Try to call LOG with invalid strings and observe the results.
+    //      Try to call initialization routines twice and see if the second time they skip initialization.
+    //      Somehow test for dirty initialization handling.
 
     if(X11Initialize() == FAILED)
     {
