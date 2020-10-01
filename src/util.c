@@ -17,6 +17,14 @@
 // Reset formatting
 #define RESET       "\x1B[0m"
 
+#if defined(DEBUG)
+    int logLevel = LOG_DEBUG;
+#else
+    int logLevel = LOG_ERROR;
+#endif
+
+int quiet = FALSE;
+
 char * autoFormat(char *, int, ...);
 
 /*
@@ -34,8 +42,23 @@ char * autoFormat(char *, int, ...);
  *  TODO: Actually implement extensive tests.
  */
 
+void setLogLevel(const int level)
+{
+    logLevel = level;
+    return;
+}
+
+void beQuiet()
+{
+    quiet = TRUE;
+    return;
+}
+
 int logEvent(const char *fileName, const int lineNumber, const char* function, int severity, char *format, int count, ...)
 {
+    if(severity < logLevel || quiet)
+        return OK;
+
     char *color = NULL;
     char *type = NULL;
 
@@ -156,6 +179,7 @@ char * autoFormat(char* format, int count, ...)
     va_end(args);
     va_start(args, count);
 
+    // TODO: Validate return from malloc
     char *string = malloc((stringLength + 1) * sizeof(char));
     int result = vsnprintf(string, (stringLength + 1), format, args);
 

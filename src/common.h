@@ -15,8 +15,5 @@
 #define TRUE 1
 #define FALSE 0
 
-#ifdef DEBUG
-    #define LOG(severity, format, ...) logEvent(__FILE__, __LINE__, __func__, severity, format, countFormatIdentifiers(format), ##__VA_ARGS__)
-#else
-    #define LOG(severity, format, ...)
-#endif
+// Logging meta-function
+#define LOG(severity, format, ...) logEvent(__FILE__, __LINE__, __func__, severity, format, countFormatIdentifiers(format), ##__VA_ARGS__)
