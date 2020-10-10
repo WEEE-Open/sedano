@@ -21,13 +21,13 @@ int X11Initialize()
     // If the initialization has already been completed, do nothing
     if(X11InitializationComplete)
     {
-        LOG(LOG_DEBUG, "    Skipping initialization: already complete.");
-        LOG(LOG_DEBUG, "    If you want to reinitialize X11, terminate it first.");
+        LOG(LOG_DEBUG, "  Skipping initialization: already complete.");
+        LOG(LOG_DEBUG, "  If you want to reinitialize X11, terminate it first.");
         return OK;
     }
 
     if(X11InitializationDirty)
-        LOG(LOG_WARNING, "    Previous X11 initialization attempt did not complete successfully.");
+        LOG(LOG_WARNING, "  Previous X11 initialization attempt did not complete successfully.");
 
     // We clear this value when we complete initialization. This way we know if a previous attempt failed.
     X11InitializationDirty = TRUE;
@@ -36,19 +36,19 @@ int X11Initialize()
 
     if(X11Display == NULL)
     {
-        LOG(LOG_ERROR, "    Failed to open display!");
+        LOG(LOG_ERROR, "  Failed to open display!");
         X11InitializationDirty = TRUE;
         return X11Terminate();
     }
 
-    LOG(LOG_DEBUG, "    Display opened successfully.");
+    LOG(LOG_DEBUG, "  Display opened successfully.");
 
     rootWindow = DefaultRootWindow(X11Display);
-    LOG(LOG_DEBUG, "    Hooked to default root window for the display.");
+    LOG(LOG_DEBUG, "  Hooked to default root window for the display.");
 
     // We are not interested in the previous handler so we ignore return value.
     XSetErrorHandler(errorHandler);
-    LOG(LOG_DEBUG, "    Hooked to X11 error handler.");
+    LOG(LOG_DEBUG, "  Hooked to X11 error handler.");
     
     LOG(LOG_INFO, "X11 interface initialized!");
 
@@ -59,7 +59,13 @@ int X11Initialize()
 // Type the string in the currently focused window.
 int typeString(char *string, int delaySeconds)
 {
-    //TODO: This is horrible
+    // Check wether the passed-in string is NULL to account for possible errors in readBarcode.
+    if(string == NULL)
+    {
+        LOG(LOG_ERROR, "ERROR: The passed-in string is actually NULL!");
+        return FAILED;
+    }
+
     LOG(LOG_DEBUG, "Typing the string \"%s\" of length %d into the currently focused window.", string, strlen(string));
 
     Window currentWindow;
@@ -72,23 +78,28 @@ int typeString(char *string, int delaySeconds)
     {
         // ASCII characters from 0x20 to 0xFF directly map to the corresponding KeySym.
         // ASCII characters below 0x20 are just control characters and should never appear (can be ignored).
-        if(string[i] < 0x20 || string[i] > 0x7E)
+        if(string[i] == '\n')
         {
-            LOG(LOG_WARNING, "Ignoring invalid ascii character in input string.");
+            // "Silently" ignore newline (probably coming from interactive mode).
+            LOG(LOG_DEBUG, "  Ignoring newline in barcode string (probably coming from interactive mode).");
+        }
+        else if(string[i] < 0x20 || string[i] > 0x7E)
+        {
+            LOG(LOG_WARNING, "  Ignoring invalid ASCII character in input string.");
             continue;
         }
 
-        LOG(LOG_DEBUG, "    Sending keycode 0x%02X corresponding to letter \'%c\'...", XKeysymToKeycode(X11Display, (KeySym) string[i]), string[i]);
+        LOG(LOG_DEBUG, "  Sending keycode 0x%02X corresponding to letter \'%c\'...", XKeysymToKeycode(X11Display, (KeySym) string[i]), string[i]);
 
         if(sendKeyEvent(TRUE, string[i], currentWindow) == FAILED)
             return FAILED;
 
-        LOG(LOG_DEBUG, "        Sent KeyPress event");
+        LOG(LOG_DEBUG, "    Sent KeyPress event");
 
         if(sendKeyEvent(FALSE, string[i], currentWindow) == FAILED)
             return FAILED;
 
-        LOG(LOG_DEBUG, "        Sent KeyRelease event");
+        LOG(LOG_DEBUG, "    Sent KeyRelease event");
 
         XFlush(X11Display);
     }
@@ -124,6 +135,7 @@ int sendKeyEvent(int press, char letter, Window window)
 // Handles errors reported by X11.
 // Errors can be non-fatal so the function can return but it must not generate
 // (in)directly protocol requests on the display that caused the error.
+// TODO: Actually do something
 int errorHandler(Display *display, XErrorEvent *error)
 {
     LOG(LOG_ERROR, "Exception raised by X11 server!");
