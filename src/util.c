@@ -194,3 +194,53 @@ char * autoFormat(char* format, int count, ...)
         return string;
 
 }
+
+// Finds a switch in the command line
+int findSwitch(int argc, char **argv, char *name)
+{
+    for(int i = 1; i < argc; ++i)
+        if((strlen(name) == strlen(argv[i])) && !strcmp(name, argv[i]))
+            return TRUE;
+    
+    return FALSE;
+}
+
+// Get value of a parameter from the command line
+char *getValue(int argc, char **argv, char *name)
+{
+    for(int i = 0; i < argc; ++i)
+        if((strlen(name) == strlen(argv[i])) && !strcmp(name, argv[i]))
+        {
+            if((i + 1) < argc && argv[i+1][0] != '-')
+                return argv[i+1];
+            else
+                return NULL;
+        }
+    
+    return NULL;        
+}
+
+// Wether the input is a natural number and, optionally, within a closed interval
+// On success, return the number
+// On failure, return -1
+int isNatural(char *number, int min, int max)
+{
+    int length;
+
+    if(!(length = strlen(number)))
+        return FAILED;
+
+    for(int i = 0; i < length; ++i)
+        if(number[i] < '0' || number[i] > '9')
+            return FAILED;
+    
+    int num = atoi(number);
+
+    if(min != -1 && num < min)
+        return FAILED;
+    
+    if(max != -1 && num > max)
+        return FAILED;
+    
+    return num;
+}

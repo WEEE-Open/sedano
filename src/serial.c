@@ -93,11 +93,12 @@ int serialInitialize(char *path, int setSerial)
             LOG(LOG_ERROR, "  Failed to set serial parameters.\n    The error was: %s\n", strerror(errno));
             return serialTerminate();
         }
+
+        LOG(LOG_DEBUG, "  Serial parameters set successfully.");
     }
     else
         LOG(LOG_INFO, "  Skipping setting serial parameters...");
 
-    LOG(LOG_DEBUG, "  Serial parameters set successfully.");
     dumpSerialParameters(&deviceTTY);
 
     serialInitializationDirty = FALSE;

@@ -59,6 +59,10 @@ int X11Initialize()
 // Type the string in the currently focused window.
 int typeString(char *string, int delaySeconds)
 {
+    // Wait for delay
+    if(delaySeconds)
+        sleep(delaySeconds);
+
     // Check wether the passed-in string is NULL to account for possible errors in readBarcode.
     if(string == NULL)
     {
@@ -82,6 +86,7 @@ int typeString(char *string, int delaySeconds)
         {
             // "Silently" ignore newline (probably coming from interactive mode).
             LOG(LOG_DEBUG, "  Ignoring newline in barcode string (probably coming from interactive mode).");
+            continue;
         }
         else if(string[i] < 0x20 || string[i] > 0x7E)
         {
@@ -99,7 +104,7 @@ int typeString(char *string, int delaySeconds)
         if(sendKeyEvent(FALSE, string[i], currentWindow) == FAILED)
             return FAILED;
 
-        LOG(LOG_DEBUG, "    Sent KeyRelease event");
+        LOG(LOG_DEBUG, "   Sent KeyRelease event");
 
         XFlush(X11Display);
     }

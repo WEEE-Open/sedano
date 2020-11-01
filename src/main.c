@@ -10,10 +10,12 @@ void help();
 void quit();
 
 // "Global" variables with relative defaults
-char * deviceFile    = "/dev/ttyS0";            // First serial device on the system. Seems a reasonable default.
-int    loopbackMode  = FALSE;                   // Don't want that by default.
-int    loopbackDelay = 2;                       // Two seconds should be just enough to switch windows with ALT+TAB.
-int    setSerial     = TRUE;                    // Set serial parameters by default.
+char * deviceFile    = "/dev/ttyS0";    // First serial device on the system. Seems a reasonable default.
+
+int    loopbackMode  = FALSE;           // Don't use stdin by default.
+int    loopbackDelay = 2;               // Two seconds should be just enough to switch windows with ALT+TAB.
+
+int    setSerial     = TRUE;            // Set serial parameters by default.
 
 int main(int argc, char **argv)
 {
@@ -23,13 +25,6 @@ int main(int argc, char **argv)
 
     //TODO: Try to call LOG with invalid strings and observe the results.
     //      Try to call initialization routines twice and see if the second time they skip initialization.
-    //      Somehow test for dirty initialization handling.
-    //      Parse command line options:
-    //          - Device file for scanner
-    //          - Quiet mode (disables output, default no)
-    //          - Debug level (debug, info, warning, error, fatal).
-    //          - Loopback mode (accept "scanner" input from stdin)
-    //          - Loopback mode delay
     parseCommandLine(argc, argv);
 
     LOG(LOG_INFO, "Starting S.E.D.A.N.O...");
@@ -79,18 +74,6 @@ int main(int argc, char **argv)
             free(string);
         }
     }
-
-    while(TRUE)
-    {
-        char string[1000];
-        scanf("%s", string);
-
-        if(typeString(string, 2) == FAILED)
-        {
-            LOG(LOG_FATAL, "ERROR: Failed to print the string.");
-            exit(1);
-        }
-    }
 }
 
 void handleSignal(int signal)
@@ -106,42 +89,41 @@ void handleSignal(int signal)
 
 void parseCommandLine(int argc, char **argv)
 {
-    for(int i = 1; i < argc; ++i)
-        if(strcmp(argv[i], "--quiet") == 0)
-            beQuiet();
-        else if(strcmp(argv[i], "--nosetserial") == 0)
-            setSerial = FALSE;
-        else if(strcmp(argv[i], "--loglevel") == 0)
-            if((i + 1) < argc)
-                // If the string is an invalid sequence, it will default to the DEBUG log level (int = 0).
-                setLogLevel(atoi(argv[++i]));
-            else
-                // Technically we also accept values outside of that range, however they are redundant and therefore not documented.
-                LOG(LOG_ERROR, "You need to specify an integer in the range %d - %d after the --loglevel argument.", LOG_DEBUG, LOG_FATAL);
-        else if(strcmp(argv[i], "--device") == 0)
-            if((i + 1) < argc)
-                deviceFile = strdup(argv[++i]);
-            else
-                LOG(LOG_ERROR, "You need to specify a path after the --device argument.", LOG_DEBUG, LOG_FATAL);
-        else if(strcmp(argv[i], "--loopback") == 0)
-            loopbackMode = TRUE;
-        else if(strcmp(argv[i], "--delay") == 0)
-            if((i + 1) < argc)
-                // If the string is an invalid sequence, it will default to a delay of 0.
-                setLogLevel(atoi(argv[++i]));
-            else
-                LOG(LOG_ERROR, "You need to specify an integer after the --delay argument.", LOG_DEBUG, LOG_FATAL);
-        else if(strcmp(argv[i], "--help") == 0)
-            help();
-        else
-            LOG(LOG_ERROR, "Unrecognized command line option \"%s\"", argv[i]);
+    // Boolean switches
+    if(FINDSWITCH("--help") || FINDSWITCH("-h"))
+        help();
+
+    if(FINDSWITCH("--quiet"))
+        beQuiet();
+
+    setSerial = !FINDSWITCH("--nosetserial");
+    loopbackMode = FINDSWITCH("--loopback");
+
+    // Strings
+    char *device = GETVALUE("--device");
+
+    if(device != NULL)
+        deviceFile = device;
+
+    // Ints
+    char *delay = GETVALUE("--delay");
+    char *loglevel = GETVALUE("--loglevel");
+
+    int parsedDelay = (delay) ? isNatural(delay, -1, -1) : -1;
+    int parsedLevel = (loglevel) ? isNatural(loglevel, LOG_DEBUG, LOG_FATAL) : -1;
+
+    if(parsedDelay != -1)
+        loopbackDelay = parsedDelay;
+    
+    if(parsedLevel != -1)
+        setLogLevel(parsedLevel);
 }
 
 void help()
 {
     //TODO: Actual documentation
     printf("SUCH DOCUMENTATION\nMUCH HELP\nVERY EXPLAIN\n\n");
-    quit(0);
+    exit(0);
 }
 
 void quit(int level)
