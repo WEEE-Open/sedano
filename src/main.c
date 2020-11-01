@@ -6,7 +6,7 @@
 
 void handleSignal(int signal);
 void parseCommandLine(int argc, char **argv);
-void help();
+void help(char *path);
 void quit();
 
 // "Global" variables with relative defaults
@@ -91,7 +91,7 @@ void parseCommandLine(int argc, char **argv)
 {
     // Boolean switches
     if(FINDSWITCH("--help") || FINDSWITCH("-h"))
-        help();
+        help(argv[0]);
 
     if(FINDSWITCH("--quiet"))
         beQuiet();
@@ -119,10 +119,18 @@ void parseCommandLine(int argc, char **argv)
         setLogLevel(parsedLevel);
 }
 
-void help()
+void help(char *path)
 {
     //TODO: Actual documentation
-    printf("SUCH DOCUMENTATION\nMUCH HELP\nVERY EXPLAIN\n\n");
+    printf("Usage: %s [options]\n\n", path);
+    printf("Command line options:\n");
+    printf("    --device <path>    : Specifies device file to use.\n\n");
+    printf("    --loglevel <level> : Specifies output loglevel (%d = Debug, %d = Fatal).\n", LOG_DEBUG, LOG_FATAL);
+    printf("    --delay <seconds>  : Specifies seconds of delay between scanner read and X11 write.\n\n");
+    printf("    --loopback         : Enables loopback mode (read from stdin instead of scanner).\n");
+    printf("    --nosetserial      : Skips serial parameter initialization.\n\n");
+    printf("    --quiet            : Suppresses ALL output (including fatal errors).\n");
+    printf("    --help             : Shows this screen.\n");
     exit(0);
 }
 

@@ -8,7 +8,7 @@ The scanner sends string representation of the barcode over RS232 serial communi
 This utility collects that string and types it into the currently selected input field simulating a series of keystroke that get sent to the X server.
 
 ## How to compile?
-```sh
+```shell script
 # Compile the program
 # Requisites: gcc and make
 make
@@ -26,7 +26,35 @@ make debug
 Object files are put into the `obj` subfolder (`obj/dbg` for the debug counterpart) and the binaries are found in `bin/release` and `bin/debug`. The default configuration adds debug information readable by GDB.
 
 ## How to use?
-For now just as any other utility - directly executing it from the command line with root privileges (needed to access the serial device):
-```sh
-sudo bin/release
+For now just as any other utility - directly executing it from the command line:
+
+> NOTE: In order for the program to function, it must be able to access the specified file (for example `/dev/ttyS0`). For this to happen the program has to either be run as root (**higly discouraged**) or the user must be part of the group that owns that file, which can be seen from the command line with `ls -la /path/to/file`.
+
+```shell script
+bin/release --device /path/to/file
 ```
+
+The program has a series of available command line options:
+
+| Argument             | Meaning                                              |
+|----------------------|------------------------------------------------------|
+| `--device [path]`    | Specifies path of the scanner file                   |
+| `--loglevel [level]` | Specifies log level                                  |
+| `--delay [seconds]`  | Delay in seconds to wait before writing after a read |
+| `--loopback`         | Enables loopback mode                                |
+| `--nosetserial`      | Skips serial parameters initialization               |
+| `--quiet`            | Suppresses **ALL** errors (including fatals)         |
+| `--help`             | Shows an usage page                                  |
+
+### Loopback mode
+Loopback mode disregards the scanner and asks for barcodes directly on the command line. It's primarly a debug feature used to debug code interacting with the X server that bypasses the need to always have the scanner at disposal for development purposes.
+
+### No-set-serial
+This flag prevents the program from setting up the serial communication's parameters, like baudrate, parity, number of stop bits and so on. Primarily intended to debug issues with the serial communication and find the correct list of parameters.
+
+### Log levels
+* 0: Debug messages
+* 1: Informational messages
+* 2: Warnings
+* 3: Non-fatal errors (don't cause the program to terminate)
+* 4: Fatal messages (cause the program to terminate)
