@@ -1,17 +1,16 @@
-#define XK_MISCELLANY
-#define XK_LATIN1
-
 #include <X11/Xlib.h>
-#include <X11/keysymdef.h>
 
 #include "common.h"
+
+extern const char * terminatorNames[];
+extern KeySym terminatorSymbols[];
 
 Display *X11Display;
 Window rootWindow;
 
 int errorHandler(Display *, XErrorEvent *);
 int sendKeyEvent(int press, char letter, Window window);
-int sendTerminator(int press, terminators terminator, Window window);
+int sendTerminator(int terminatorIndex, Window window);
 int X11Terminate();
 
 int X11InitializationComplete = FALSE;
@@ -62,7 +61,7 @@ int X11Initialize()
 }
 
 // Type the string in the currently focused window.
-int typeString(char *string, int delaySeconds, terminators terminator)
+int typeString(char *string, int delaySeconds, int terminatorIndex)
 {
     // Wait for delay
     if(delaySeconds)
@@ -114,26 +113,12 @@ int typeString(char *string, int delaySeconds, terminators terminator)
         XFlush(X11Display);
     }
 
-    LOG(LOG_DEBUG, "  Sending terminator KeyPress event...");
+    LOG(LOG_DEBUG, "  Sending terminator...");
 
-    if(terminator != NONE)
-    {
-        if(sendTerminator(TRUE, terminator, currentWindow) == FAILED)
-            return FAILED;
+    if(sendTerminator(terminatorIndex, currentWindow) == FAILED)
+        return FAILED;
 
-        LOG(LOG_DEBUG, "  Sent terminator KeyPress event...");
-
-        LOG(LOG_DEBUG, "  Sending terminator KeyRelease event...");
-
-        if(sendTerminator(FALSE, terminator, currentWindow) == FAILED)
-            return FAILED;
-
-        LOG(LOG_DEBUG, "  Sent terminator KeyRelease event...");
-    }
-    else
-    {
-        LOG(LOG_DEBUG, "Skipping sending terminator...");
-    }
+    LOG(LOG_DEBUG, "  Sent terminator");
 
     XFlush(X11Display);
         
@@ -165,19 +150,9 @@ int sendKeyEvent(int press, char letter, Window window)
         return OK;
 }
 
-int sendTerminator(int press, terminators terminator, Window window)
+int sendTerminator(int terminatorIndex, Window window)
 {
     XKeyEvent event;
-    KeySym symbol;
-
-    if(terminator == NONE)
-        return OK;
-    else if(terminator == ENTER)
-        symbol = XK_Return;
-    else if(terminator == TABULATION)
-        symbol = XK_Tab;
-    else if(terminator == SPACE)
-        symbol = XK_space;
 
     event.display = X11Display;
     event.window = window;
@@ -189,14 +164,20 @@ int sendTerminator(int press, terminators terminator, Window window)
     event.x_root = 1;
     event.y_root = 1;
     event.same_screen = TRUE;
-    event.keycode = XKeysymToKeycode(X11Display, symbol);
+    event.keycode = XKeysymToKeycode(X11Display, terminatorSymbols[terminatorIndex]);
     event.state = 0;
-    event.type = press ? KeyPress : KeyRelease;
+    event.type = KeyPress;
 
+    // Send keypress.
     if(XSendEvent(X11Display, window, TRUE, KeyPressMask, (XEvent *) &event) == 0)
         return FAILED;
-    else
-        return OK;
+    
+    // Send keyrelease.
+    event.type = KeyRelease;
+    if(XSendEvent(X11Display, window, TRUE, KeyPressMask, (XEvent *) &event) == 0)
+        return FAILED;
+
+    return OK;
 }
 
 // Handles errors reported by X11.

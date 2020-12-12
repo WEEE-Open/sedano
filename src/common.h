@@ -18,13 +18,3 @@
 // Logging meta-function
 #define LOG(severity, format, ...) logEvent(__FILE__, __LINE__, __func__, severity, format, countFormatIdentifiers(format), ##__VA_ARGS__)
 #define SAMESTR(one, two) (strlen(one) == strlen(two) && strcmp(one, two) == 0)
-
-// Possible terminator values
-typedef enum terminators
-{
-    NONE=-1,
-    ENTER=0,
-    TABULATION=1,
-    SPACE=2
-}
-terminators;

@@ -1,5 +1,5 @@
 #pragma once
 
 int X11Initialize();
-int typeString(char *, int, terminators);
+int typeString(char *string, int delaySeconds, int terminatorIndex);
 void X11Terminate();

@@ -3,6 +3,7 @@
 #include "common.h"
 #include "serial.h"
 #include "xorg.h"
+#include "terminators.h"
 
 void handleSignal(int signal);
 void parseCommandLine(int argc, char **argv);
@@ -15,10 +16,9 @@ char * deviceFile      = "/dev/ttyS0";    // First serial device on the system. 
 
 int    loopbackMode    = FALSE;           // Don't use stdin by default.
 int    loopbackDelay   = 2;               // Two seconds should be just enough to switch windows with ALT+TAB.
+int    terminatorIndex = 0;               // Don't print any terminator by default (terminator at index 0 is just XK_VoidSymbol)
 
 int    setSerial       = TRUE;            // Set serial parameters by default.
-
-terminators terminator = NONE;            // What keypress to send to Xorg after the string hs been typed.
 
 int main(int argc, char **argv)
 {
@@ -48,7 +48,7 @@ int main(int argc, char **argv)
             printf(">>> ");
             fgets(buffer, 256, stdin);
 
-            if(typeString(buffer, loopbackDelay, terminator) == FAILED)
+            if(typeString(buffer, loopbackDelay, terminatorIndex) == FAILED)
             {
                 LOG(LOG_FATAL, "ERROR: Failed to print the string.");
                 exit(1);
@@ -67,7 +67,7 @@ int main(int argc, char **argv)
         {
             char *string = readBarcode();
 
-            if(typeString(string, 0, terminator) == FAILED)
+            if(typeString(string, 0, terminatorIndex) == FAILED)
             {
                 LOG(LOG_FATAL, "ERROR: Failed to print the string.");
                 exit(1);
@@ -123,28 +123,23 @@ void parseCommandLine(int argc, char **argv)
 
     char *terminator = GETVALUE("--terminator");
 
-    if(!parseTerminator(terminator))
-        LOG(LOG_ERROR, "\"%s\" is not a valid terminator: disabling terminator.");
+    if(parseTerminator(terminator) == FAILED)
+        LOG(LOG_ERROR, "\"%s\" is not a valid terminator: disabling terminator.", terminator);
 }
 
 int parseTerminator(char * string)
 {
     if(string == NULL)
-        return 1;
+        return OK;
 
-    if(SAMESTR(string, "ENTER"))
-        terminator = ENTER;
-    else if(SAMESTR(string, "TABULATION"))
-        terminator = TABULATION;
-    else if(SAMESTR(string, "SPACE"))
-        terminator = SPACE;
-    else
-    {
-        terminator = NONE;
-        return 0;
-    }
+    for(int i = 0; i < terminatorCount; ++i)
+        if(SAMESTR(string, terminatorNames[i]))
+        {
+            terminatorIndex = i;
+            return OK;
+        }
 
-    return 1;
+    return FAILED;
 }
 
 void help(char *path)
