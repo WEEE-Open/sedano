@@ -122,15 +122,20 @@ void parseCommandLine(int argc, char **argv)
 void help(char *path)
 {
     //TODO: Actual documentation
-    printf("Usage: %s [options]\n\n", path);
-    printf("Command line options:\n");
+    printf("Usage: %s [options]\n", path);
+    printf("\nCommand line options:\n");
     printf("    --device <path>    : Specifies device file to use.\n\n");
+    printf("    --terminator <key> : Terminates all inputs with a given keypress. See the following sections for valid values.\n"):
     printf("    --loglevel <level> : Specifies output loglevel (%d = Debug, %d = Fatal).\n", LOG_DEBUG, LOG_FATAL);
     printf("    --delay <seconds>  : Specifies seconds of delay between scanner read and X11 write.\n\n");
     printf("    --loopback         : Enables loopback mode (read from stdin instead of scanner).\n");
     printf("    --nosetserial      : Skips serial parameter initialization.\n\n");
     printf("    --quiet            : Suppresses ALL output (including fatal errors).\n");
     printf("    --help             : Shows this screen.\n");
+    printf("\nValid terminator IDs:\n");
+    printf("    ENTER\n");
+    printf("    TABULATION\n");
+    printf("    SPACE\n");
     exit(0);
 }
 
