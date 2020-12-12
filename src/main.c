@@ -6,16 +6,19 @@
 
 void handleSignal(int signal);
 void parseCommandLine(int argc, char **argv);
+int parseTerminator(char * string);
 void help(char *path);
 void quit();
 
 // "Global" variables with relative defaults
-char * deviceFile    = "/dev/ttyS0";    // First serial device on the system. Seems a reasonable default.
+char * deviceFile      = "/dev/ttyS0";    // First serial device on the system. Seems a reasonable default.
 
-int    loopbackMode  = FALSE;           // Don't use stdin by default.
-int    loopbackDelay = 2;               // Two seconds should be just enough to switch windows with ALT+TAB.
+int    loopbackMode    = FALSE;           // Don't use stdin by default.
+int    loopbackDelay   = 2;               // Two seconds should be just enough to switch windows with ALT+TAB.
 
-int    setSerial     = TRUE;            // Set serial parameters by default.
+int    setSerial       = TRUE;            // Set serial parameters by default.
+
+terminators terminator = NONE;            // What keypress to send to Xorg after the string hs been typed.
 
 int main(int argc, char **argv)
 {
@@ -45,7 +48,7 @@ int main(int argc, char **argv)
             printf(">>> ");
             fgets(buffer, 256, stdin);
 
-            if(typeString(buffer, loopbackDelay) == FAILED)
+            if(typeString(buffer, loopbackDelay, terminator) == FAILED)
             {
                 LOG(LOG_FATAL, "ERROR: Failed to print the string.");
                 exit(1);
@@ -64,7 +67,7 @@ int main(int argc, char **argv)
         {
             char *string = readBarcode();
 
-            if(typeString(string, 0) == FAILED)
+            if(typeString(string, 0, terminator) == FAILED)
             {
                 LOG(LOG_FATAL, "ERROR: Failed to print the string.");
                 exit(1);
@@ -117,6 +120,31 @@ void parseCommandLine(int argc, char **argv)
     
     if(parsedLevel != -1)
         setLogLevel(parsedLevel);
+
+    char *terminator = GETVALUE("--terminator");
+
+    if(!parseTerminator(terminator))
+        LOG(LOG_ERROR, "\"%s\" is not a valid terminator: disabling terminator.");
+}
+
+int parseTerminator(char * string)
+{
+    if(string == NULL)
+        return 1;
+
+    if(SAMESTR(string, "ENTER"))
+        terminator = ENTER;
+    else if(SAMESTR(string, "TABULATION"))
+        terminator = TABULATION;
+    else if(SAMESTR(string, "SPACE"))
+        terminator = SPACE;
+    else
+    {
+        terminator = NONE;
+        return 0;
+    }
+
+    return 1;
 }
 
 void help(char *path)
@@ -125,7 +153,7 @@ void help(char *path)
     printf("Usage: %s [options]\n", path);
     printf("\nCommand line options:\n");
     printf("    --device <path>    : Specifies device file to use.\n\n");
-    printf("    --terminator <key> : Terminates all inputs with a given keypress. See the following sections for valid values.\n"):
+    printf("    --terminator <key> : Terminates all inputs with a given keypress. See the following section for valid terminators.\n");
     printf("    --loglevel <level> : Specifies output loglevel (%d = Debug, %d = Fatal).\n", LOG_DEBUG, LOG_FATAL);
     printf("    --delay <seconds>  : Specifies seconds of delay between scanner read and X11 write.\n\n");
     printf("    --loopback         : Enables loopback mode (read from stdin instead of scanner).\n");

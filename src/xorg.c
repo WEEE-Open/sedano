@@ -1,4 +1,8 @@
+#define XK_MISCELLANY
+#define XK_LATIN1
+
 #include <X11/Xlib.h>
+#include <X11/keysymdef.h>
 
 #include "common.h"
 
@@ -7,6 +11,7 @@ Window rootWindow;
 
 int errorHandler(Display *, XErrorEvent *);
 int sendKeyEvent(int press, char letter, Window window);
+int sendTerminator(int press, terminators terminator, Window window);
 int X11Terminate();
 
 int X11InitializationComplete = FALSE;
@@ -57,7 +62,7 @@ int X11Initialize()
 }
 
 // Type the string in the currently focused window.
-int typeString(char *string, int delaySeconds)
+int typeString(char *string, int delaySeconds, terminators terminator)
 {
     // Wait for delay
     if(delaySeconds)
@@ -108,6 +113,29 @@ int typeString(char *string, int delaySeconds)
 
         XFlush(X11Display);
     }
+
+    LOG(LOG_DEBUG, "  Sending terminator KeyPress event...");
+
+    if(terminator != NONE)
+    {
+        if(sendTerminator(TRUE, terminator, currentWindow) == FAILED)
+            return FAILED;
+
+        LOG(LOG_DEBUG, "  Sent terminator KeyPress event...");
+
+        LOG(LOG_DEBUG, "  Sending terminator KeyRelease event...");
+
+        if(sendTerminator(FALSE, terminator, currentWindow) == FAILED)
+            return FAILED;
+
+        LOG(LOG_DEBUG, "  Sent terminator KeyRelease event...");
+    }
+    else
+    {
+        LOG(LOG_DEBUG, "Skipping sending terminator...");
+    }
+
+    XFlush(X11Display);
         
     return OK;
 }
@@ -128,6 +156,40 @@ int sendKeyEvent(int press, char letter, Window window)
     event.y_root = 1;
     event.same_screen = TRUE;
     event.keycode = XKeysymToKeycode(X11Display, (KeySym) letter);
+    event.state = 0;
+    event.type = press ? KeyPress : KeyRelease;
+
+    if(XSendEvent(X11Display, window, TRUE, KeyPressMask, (XEvent *) &event) == 0)
+        return FAILED;
+    else
+        return OK;
+}
+
+int sendTerminator(int press, terminators terminator, Window window)
+{
+    XKeyEvent event;
+    KeySym symbol;
+
+    if(terminator == NONE)
+        return OK;
+    else if(terminator == ENTER)
+        symbol = XK_Return;
+    else if(terminator == TABULATION)
+        symbol = XK_Tab;
+    else if(terminator == SPACE)
+        symbol = XK_space;
+
+    event.display = X11Display;
+    event.window = window;
+    event.root = rootWindow;
+    event.subwindow = None;
+    event.time = CurrentTime;
+    event.x = 1;
+    event.y = 1;
+    event.x_root = 1;
+    event.y_root = 1;
+    event.same_screen = TRUE;
+    event.keycode = XKeysymToKeycode(X11Display, symbol);
     event.state = 0;
     event.type = press ? KeyPress : KeyRelease;
 
