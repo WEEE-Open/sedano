@@ -36,15 +36,26 @@ bin/release --device /path/to/file
 
 The program has a series of available command line options:
 
-| Argument             | Meaning                                              |
-|----------------------|------------------------------------------------------|
-| `--device [path]`    | Specifies path of the scanner file                   |
-| `--loglevel [level]` | Specifies log level                                  |
-| `--delay [seconds]`  | Delay in seconds to wait before writing after a read |
-| `--loopback`         | Enables loopback mode                                |
-| `--nosetserial`      | Skips serial parameters initialization               |
-| `--quiet`            | Suppresses **ALL** errors (including fatals)         |
-| `--help`             | Shows an usage page                                  |
+| Argument             | Meaning                                                          |
+|----------------------|------------------------------------------------------------------|
+| `--device [path]`    | Specifies path of the scanner file                               |
+| `--terminator [id]`  | Prints a terminator after the string (see the following section) |
+| `--loglevel [level]` | Specifies log level                                              |
+| `--delay [seconds]`  | Delay in seconds to wait before writing after a read             |
+| `--loopback`         | Enables loopback mode                                            |
+| `--nosetserial`      | Skips serial parameters initialization                           |
+| `--quiet`            | Suppresses **ALL** errors (including fatals)                     |
+| `--help`             | Shows an usage page                                              |
+
+### Terminator
+Terminators are special keys sent to the graphical server after the scanned string. Their usage can help improve the workflow (for example automatically pressing `tab` to switch to the next field after filling in one). The following terminators are currently available:
+
+* `NONE`
+* `ENTER`
+* `TABULATION`
+* `SPACE`
+
+The names are pretty self-explanatory. The default is `NONE`.
 
 ### Loopback mode
 Loopback mode disregards the scanner and asks for barcodes directly on the command line. It's primarly a debug feature used to debug code interacting with the X server that bypasses the need to always have the scanner at disposal for development purposes.
