@@ -125,9 +125,13 @@ char * readBarcode()
     {
         serialTerminate();
         free(barcode);
+
         LOG(LOG_ERROR, "  Failed to allocate memory for the barcode.");
+
         return NULL;
     }
+
+    LOG(LOG_DEBUG, "  Waiting for a barcode...");
 
     // Wait for the start of a new string to come.
     do
@@ -136,7 +140,6 @@ char * readBarcode()
     }
     while(nextChar != 0x02);
 
-    LOG(LOG_DEBUG, "  Waiting for a barcode...");
     while(TRUE)
     {
         nextChar = fgetc(deviceFS);
@@ -153,6 +156,7 @@ char * readBarcode()
             free(barcode);
 
             LOG(LOG_ERROR, "  Failed to expand memory for the barcode.");
+
             return NULL;
         }
 

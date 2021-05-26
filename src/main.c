@@ -35,7 +35,7 @@ int main(int argc, char **argv)
     if(X11Initialize() == FAILED)
     {
         LOG(LOG_FATAL, "ERROR: Failed to initialize X11.");
-        exit(1);
+        quit(1);
     }
 
     if(loopbackMode)
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
             if(typeString(buffer, loopbackDelay, terminatorIndex) == FAILED)
             {
                 LOG(LOG_FATAL, "ERROR: Failed to print the string.");
-                exit(1);
+                quit(1);
             }
         }
     }
@@ -60,7 +60,7 @@ int main(int argc, char **argv)
         if(serialInitialize(deviceFile, setSerial) != OK)
         {
             LOG(LOG_FATAL, "ERROR: Failed to open serial connection to device.");
-            exit(1);
+            quit(1);
         }
 
         while(TRUE)
@@ -70,7 +70,7 @@ int main(int argc, char **argv)
             if(typeString(string, 0, terminatorIndex) == FAILED)
             {
                 LOG(LOG_FATAL, "ERROR: Failed to print the string.");
-                exit(1);
+                quit(1);
             }
 
             // This string has been malloc'd
